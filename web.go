@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -30,7 +31,7 @@ func main() {
 type ShoutRequest struct {
 	Input  string `json:"INPUT"`
 	Output string `json:"OUTPUT"`
-	Error  error
+	Error  error  `json:"ERROR,omitempty"`
 }
 
 func (s *ShoutRequest) Process() {
@@ -75,11 +76,26 @@ func (s *ShoutRequest) Process() {
 }
 
 func ProShout(w http.ResponseWriter, r *http.Request) {
-	// get API key out of auth header
-	// verify API key on gumroad
-
 	// process shoutrequest
 	log.Printf("POST /V1/SHOUT %v", r.RemoteAddr)
+
+	// get API key out of auth header
+	licenceKey := r.Header.Get("X-AUTHORIZATION")
+	if licenceKey == "" {
+		http.Error(w, "NO X-AUTHORIZATION SET", http.StatusForbidden)
+		return
+	}
+	// verify API key on gumroad
+	licenceResp, err := http.PostForm("https://api.gumroad.com/v2/licenses/verify",
+		url.Values{
+			"product_permalink": {"SHOUTCLOUD_PRO"},
+			"license_key":       {licenceKey},
+		})
+
+	if err != nil || licenceResp.StatusCode == 404 {
+		http.Error(w, "BAD LICENCE", http.StatusForbidden)
+		return
+	}
 
 	if !(r.Header.Get("Content-Type") == "application/json" ||
 		r.Header.Get("Content-Type") == "APPLICATION/JSON" ||
@@ -91,7 +107,7 @@ func ProShout(w http.ResponseWriter, r *http.Request) {
 	}
 	decoder := json.NewDecoder(r.Body)
 	var shout ShoutRequest
-	err := decoder.Decode(&shout)
+	err = decoder.Decode(&shout)
 	if err != nil {
 		log.Printf("ERROR JSON DECODING: %v", r.Body)
 		http.Error(w, "BAD JSON REQUEST", http.StatusBadRequest)
