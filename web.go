@@ -11,13 +11,18 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 )
 
 func main() {
+	// to stop heroku spinning down
+	go periodicallyPingShoutcloudFree()
+
 	r := mux.NewRouter()
 	r.HandleFunc("/V1/SHOUT", ProShout).Methods("POST")
+	r.HandleFunc("/PING", Ping).Methods("GET")
 	http.Handle("/", r)
 
 	port := os.Getenv("PORT")
@@ -128,4 +133,27 @@ func ProShout(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("CONTENT-TYPE", "APPLICATION/JSON")
 	w.Write(json)
+}
+
+func periodicallyPingShoutcloudFree() {
+	for {
+		s := ShoutRequest{Input: "ping"}
+		jsonOut, _ := json.Marshal(s)
+		req, _ := http.NewRequest("POST", "http://api.shoutcloud.io/V1/SHOUT", bytes.NewBuffer(jsonOut))
+		req.Header.Set("CONTENT-TYPE", "APPLICATION/JSON")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Printf("Error pinging shoutcloud: %v", err)
+		}
+		if resp.StatusCode != 200 {
+			log.Printf("Error pinging shoutcloud with status: %v", resp.StatusCode)
+		}
+
+		time.Sleep(77 * time.Second)
+	}
+}
+
+func Ping(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("PONG"))
 }
