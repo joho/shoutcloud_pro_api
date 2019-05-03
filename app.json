@@ -1,0 +1,12 @@
+{
+  "name": "shoutcloud-pro-api",
+  "description": "PRO SHOUTING CLOUD",
+  "keywords": [
+    "CLOUD",
+    "SHOUTING"
+  ],
+  "image": "heroku/go:1.10",
+  "mount_dir": "src/github.com/joho/shoutcloud_pro_api",
+  "website": "http://github.com/joho/shoutcloud_pro_api",
+  "repository": "http://github.com/joho/shoutcloud_pro_api"
+}
